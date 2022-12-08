@@ -1,6 +1,7 @@
 import subprocess
-import requests
 import json
+
+import requests
 import boto3
 
 api_url = "https://datausa.io/api/data?drilldowns=Nation&measures=Population"
