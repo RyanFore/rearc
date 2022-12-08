@@ -43,5 +43,4 @@ terraform.rc
 
 data/
 
-
-*.zip
+.ipynb_checkpoints
