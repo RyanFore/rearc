@@ -43,7 +43,6 @@ data aws_iam_policy_document lambda {
 
    statement {
      actions = [
-       "s3:ListAllMyBuckets",
        "s3:GetBucketLocation",
        "s3:PutObject",
        "s3:DeleteObject",
@@ -61,74 +60,6 @@ resource aws_iam_policy lambda {
    policy = data.aws_iam_policy_document.lambda.json
 }
 
-#
-#resource "aws_iam_role" "lambda_role" {
-#
-#name   = "Spacelift_Test_Lambda_Function_Role"
-#
-#assume_role_policy = <<EOF
-#{
-# "Version": "2012-10-17",
-#
-# "Statement": [
-#   {
-#     "Action": "sts:AssumeRole",
-#     "Principal": {
-#       "Service": "lambda.amazonaws.com"
-#     },
-#
-#     "Effect": "Allow",
-#
-#     "Sid": ""
-#   }
-# ]
-#}
-#EOF
-#}
-#
-#resource "aws_iam_policy" "iam_policy_for_lambda" {
-#
-#
-#
-# name         = "aws_iam_policy_for_terraform_aws_lambda_role"
-# path         = "/"
-# description  = "AWS IAM Policy for managing aws lambda role"
-# policy = <<EOF
-#
-#{
-#
-# "Version": "2012-10-17",
-#
-# "Statement": [
-#
-#   {
-#
-#     "Action": [
-#
-#       "logs:CreateLogGroup",
-#
-#       "logs:CreateLogStream",
-#
-#       "logs:PutLogEvents"
-#
-#     ],
-#
-#     "Resource": "arn:aws:logs:*:*:*",
-#
-#     "Effect": "Allow"
-#
-#   }
-#
-# ]
-#
-#}
-#
-#EOF
-#
-#}
-
-
-#
 resource "aws_iam_role_policy_attachment" "attach_iam_policy_to_iam_role" {
  role        = aws_iam_role.lambda.name
  policy_arn  = aws_iam_policy.lambda.arn
@@ -148,7 +79,6 @@ resource "null_resource" "base_images" {
   # 1 Time execution that pushes base images so that the lambda function can be created
  provisioner "local-exec" {
 
-   # command = "/bin/bash create_reports_image.sh"
    command = <<EOF
       docker login ${data.aws_ecr_authorization_token.token.proxy_endpoint} -u AWS -p ${data.aws_ecr_authorization_token.token.password}
       docker pull alpine
@@ -159,15 +89,20 @@ resource "null_resource" "base_images" {
       EOF
   }
 }
-#
-#data "aws_ecr_image" "service_image" {
-#  repository_name = "rearc"
-#  image_tag       = "latest"
-#}
+
+data "aws_ecr_image" "scraper_image" {
+  repository_name = aws_ecr_repository.rearc_scraper.name
+  image_tag       = "latest"
+}
+
+data "aws_ecr_image" "reports_image" {
+  repository_name = aws_ecr_repository.rearc_reports.name
+  image_tag       = "latest"
+}
 
 
 #resource "aws_lambda_function" "lambda_scraper" {
-#  # image_uri = "${data.aws_ecr_image.service_image.registry_id}:latest"
+#  # image_uri = "${data.aws_ecr_image.scraper_image.registry_id}:latest"
 #  image_uri = "${aws_ecr_repository.rearc_scraper.registry_id}:latest"
 #  function_name                  = "rearc_terraform_scraper"
 #  role                           = aws_iam_role.lambda.arn
@@ -176,7 +111,7 @@ resource "null_resource" "base_images" {
 #}
 
 #resource "aws_lambda_function" "lambda_reports" {
-#  # image_uri = "${data.aws_ecr_image.service_image.registry_id}:latest"
+#  # image_uri = "${data.aws_ecr_image.reports_image.registry_id}:latest"
 #  image_uri = "${aws_ecr_repository.rearc_reports.registry_id}:latest"
 #  function_name                  = "rearc_terraform_reports"
 #  role                           = aws_iam_role.lambda.arn
