@@ -136,40 +136,75 @@ resource "aws_iam_role_policy_attachment" "attach_iam_policy_to_iam_role" {
 data "aws_ecr_authorization_token" "token" {
 }
 
-resource "aws_ecr_repository" "rearc" {
-  name   = "rearc"
+resource "aws_ecr_repository" "rearc_scraper" {
+  name   = "rearc_scraper"
 }
 
-resource "null_resource" "health_check" {
-  # 1 Time execution that pushes a base image so that the lambda function can be created
+resource "aws_ecr_repository" "rearc_reports" {
+  name   = "rearc_reports"
+}
+
+resource "null_resource" "base_images" {
+  # 1 Time execution that pushes base images so that the lambda function can be created
  provisioner "local-exec" {
 
-   # command = "/bin/bash create_lambda_package.sh"
+   # command = "/bin/bash create_reports_image.sh"
    command = <<EOF
       docker login ${data.aws_ecr_authorization_token.token.proxy_endpoint} -u AWS -p ${data.aws_ecr_authorization_token.token.password}
       docker pull alpine
-      docker tag alpine ${aws_ecr_repository.rearc.repository_url}:latest
-      docker push ${aws_ecr_repository.rearc.repository_url}:latest
+      docker tag alpine ${aws_ecr_repository.rearc_scraper.repository_url}:latest
+      docker push ${aws_ecr_repository.rearc_scraper.repository_url}:latest
+      docker tag alpine ${aws_ecr_repository.rearc_reports.repository_url}:latest
+      docker push ${aws_ecr_repository.rearc_reports.repository_url}:latest
       EOF
   }
 }
+#
+#data "aws_ecr_image" "service_image" {
+#  repository_name = "rearc"
+#  image_tag       = "latest"
+#}
 
-data "aws_ecr_image" "service_image" {
-  repository_name = "rearc"
-  image_tag       = "latest"
-}
+
+#resource "aws_lambda_function" "lambda_scraper" {
+#  # image_uri = "${data.aws_ecr_image.service_image.registry_id}:latest"
+#  image_uri = "${aws_ecr_repository.rearc_scraper.registry_id}:latest"
+#  function_name                  = "rearc_terraform_scraper"
+#  role                           = aws_iam_role.lambda.arn
+#  depends_on                     = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
+#  package_type = "Image"
+#}
+
+#resource "aws_lambda_function" "lambda_reports" {
+#  # image_uri = "${data.aws_ecr_image.service_image.registry_id}:latest"
+#  image_uri = "${aws_ecr_repository.rearc_reports.registry_id}:latest"
+#  function_name                  = "rearc_terraform_reports"
+#  role                           = aws_iam_role.lambda.arn
+#  depends_on                     = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
+#  package_type = "Image"
+#}
 
 
-resource "aws_lambda_function" "terraform_lambda_func" {
-  image_uri = "${data.aws_ecr_image.service_image.registry_id}:latest"
-  function_name                  = "rearc_terraform_scraper"
-  role                           = aws_iam_role.lambda.arn
-  depends_on                     = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
-  package_type = "Image"
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #resource "aws_lambda_function" "terraform_lambda_func" {
-#  filename                       = "${path.module}/create_lambda_package.sh"
+#  filename                       = "${path.module}/create_reports_image.sh"
 #  function_name                  = "rearc_terraform_scraper"
 #  role                           = aws_iam_role.lambda_role.arn
 #  handler                        = "index.lambda_handler"
