@@ -1,4 +1,5 @@
 FROM public.ecr.aws/lambda/python:3.8
+RUN yum install wget
 
 COPY lambda_scraper.py requirements.txt ./
 
