@@ -101,7 +101,6 @@ resource "aws_lambda_function" "lambda_scraper" {
   image_uri = "${aws_ecr_repository.rearc_scraper.repository_url}:latest"
   function_name                  = "rearc_terraform_scraper"
   role                           = aws_iam_role.lambda.arn
-  depends_on                     = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
   package_type = "Image"
   timeout = 60
 }
@@ -110,7 +109,6 @@ resource "aws_lambda_function" "lambda_reports" {
   image_uri = "${aws_ecr_repository.rearc_reports.repository_url}:latest"
   function_name                  = "rearc_terraform_reports"
   role                           = aws_iam_role.lambda.arn
-  depends_on                     = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
   package_type = "Image"
 
 }
@@ -122,7 +120,7 @@ resource "aws_cloudwatch_event_rule" "daily_cron_lambda_event_rule" {
   schedule_expression = "cron(0 0 ? * * *)"
 }
 
-resource "aws_cloudwatch_event_target" "profile_generator_lambda_target" {
+resource "aws_cloudwatch_event_target" "lambda_scraper_target" {
   arn =aws_lambda_function.lambda_scraper.arn
   rule = aws_cloudwatch_event_rule.daily_cron_lambda_event_rule.name
 }
@@ -136,7 +134,7 @@ resource "aws_lambda_permission" "allow_cloudwatch_to_call_lambda_scraper" {
 }
 
 
-resource "aws_sqs_queue" "q" {
+resource "aws_sqs_queue" "upload_queue" {
   name = "s3-event-queue"
   policy = <<POLICY
 {
@@ -162,13 +160,13 @@ resource "aws_s3_bucket_notification" "reports_trigger" {
   bucket = aws_s3_bucket.main_bucket.bucket
 
   queue {
-    queue_arn     = aws_sqs_queue.q.arn
+    queue_arn     = aws_sqs_queue.upload_queue.arn
     events        = ["s3:ObjectCreated:*"]
     filter_suffix       = ".json"
   }
 }
 
 resource "aws_lambda_event_source_mapping" "event_source_mapping" {
-  event_source_arn = aws_sqs_queue.q.arn
+  event_source_arn = aws_sqs_queue.upload_queue.arn
   function_name    = aws_lambda_function.lambda_reports.arn
 }
