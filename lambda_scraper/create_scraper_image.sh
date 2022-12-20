@@ -6,3 +6,4 @@ docker build -t scraper_image .
 docker tag scraper_image ${id}.dkr.ecr.${region}.amazonaws.com/rearc_scraper
 docker push ${id}.dkr.ecr.${region}.amazonaws.com/rearc_scraper
 
+aws lambda update-function-code --function-name rearc_terraform_scraper --image-uri ${id}.dkr.ecr.${region}.amazonaws.com/rearc_scraper:latest

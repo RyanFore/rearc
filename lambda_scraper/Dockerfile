@@ -1,9 +1,11 @@
-FROM public.ecr.aws/lambda/python:3.8
-RUN yum install wget
+FROM public.ecr.aws/lambda/python:3.9
+
+RUN yum install -y wget
+RUN yum install -y unzip
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip && ./aws/install
 
 COPY lambda_scraper.py requirements.txt ./
-
-RUN python3.8 -m pip install -r requirements.txt
+RUN python3.9 -m pip install -r requirements.txt
 
 # Overwrite the command by providing a different command directly in the template.
 CMD ["lambda_scraper.lambda_handler"]
