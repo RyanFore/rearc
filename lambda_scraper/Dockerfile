@@ -7,7 +7,5 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
 COPY lambda_scraper.py requirements.txt ./
 RUN python3.9 -m pip install -r requirements.txt
 
-COPY lambda_scraper.py ${LAMBDA_TASK_ROOT}
-
 # Overwrite the command by providing a different command directly in the template.
 CMD ["lambda_scraper.lambda_handler"]
