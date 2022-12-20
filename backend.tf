@@ -50,7 +50,7 @@ data aws_iam_policy_document lambda {
        "s3:GetObject"
      ]
      effect = "Allow"
-     resources = [ aws_s3_bucket.main_bucket.arn]
+     resources = ["${aws_s3_bucket.main_bucket.arn}*"]
    }
 }
 
@@ -101,23 +101,24 @@ data "aws_ecr_image" "reports_image" {
 }
 
 
-#resource "aws_lambda_function" "lambda_scraper" {
-#  # image_uri = "${data.aws_ecr_image.scraper_image.registry_id}:latest"
-#  image_uri = "${aws_ecr_repository.rearc_scraper.registry_id}:latest"
-#  function_name                  = "rearc_terraform_scraper"
-#  role                           = aws_iam_role.lambda.arn
-#  depends_on                     = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
-#  package_type = "Image"
-#}
+resource "aws_lambda_function" "lambda_scraper" {
+  # image_uri = "${data.aws_ecr_image.scraper_image.registry_id}:latest"
+  image_uri = "${aws_ecr_repository.rearc_scraper.repository_url}:latest"
+  function_name                  = "rearc_terraform_scraper"
+  role                           = aws_iam_role.lambda.arn
+  depends_on                     = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
+  package_type = "Image"
+  timeout = 60
+}
 
-#resource "aws_lambda_function" "lambda_reports" {
-#  # image_uri = "${data.aws_ecr_image.reports_image.registry_id}:latest"
-#  image_uri = "${aws_ecr_repository.rearc_reports.registry_id}:latest"
-#  function_name                  = "rearc_terraform_reports"
-#  role                           = aws_iam_role.lambda.arn
-#  depends_on                     = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
-#  package_type = "Image"
-#}
+resource "aws_lambda_function" "lambda_reports" {
+  # image_uri = "${data.aws_ecr_image.reports_image.repository_url}:latest"
+  image_uri = "${aws_ecr_repository.rearc_reports.repository_url}:latest"
+  function_name                  = "rearc_terraform_reports"
+  role                           = aws_iam_role.lambda.arn
+  depends_on                     = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
+  package_type = "Image"
+}
 
 
 
