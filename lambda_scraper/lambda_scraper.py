@@ -5,8 +5,6 @@ import requests
 import boto3
 import os
 
-print(os.getcwd())
-
 population_url = "https://datausa.io/api/data?drilldowns=Nation&measures=Population"
 bls_url = "https://download.bls.gov/pub/time.series/pr/"
 bucket_name = "ryanfore-rearc"

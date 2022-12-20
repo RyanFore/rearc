@@ -5,3 +5,5 @@ aws ecr get-login-password --region ${region} | docker login --username AWS --pa
 docker build -t rearc_reports .
 docker tag rearc_reports ${id}.dkr.ecr.${region}.amazonaws.com/rearc_reports
 docker push ${id}.dkr.ecr.${region}.amazonaws.com/rearc_reports
+
+aws lambda update-function-code --function-name rearc_terraform_reports --image-uri ${id}.dkr.ecr.${region}.amazonaws.com/rearc_reports:latest

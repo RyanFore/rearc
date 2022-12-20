@@ -1,5 +1,5 @@
 FROM public.ecr.aws/lambda/python:3.9
-RUN yum install -y vim
+
 RUN yum install -y wget
 RUN yum install -y unzip
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip && ./aws/install
