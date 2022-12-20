@@ -11,6 +11,7 @@ resource "aws_s3_bucket_acl" "main_bucket" {
   bucket = aws_s3_bucket.main_bucket.id
   acl = "public-read"
 }
+
 resource aws_iam_role lambda {
  name = "lambda-role"
  assume_role_policy = <<EOF
@@ -64,6 +65,12 @@ resource "aws_iam_role_policy_attachment" "attach_iam_policy_to_iam_role" {
  role        = aws_iam_role.lambda.name
  policy_arn  = aws_iam_policy.lambda.arn
 }
+
+resource "aws_iam_role_policy_attachment" "lambda_sqs_role_policy" {
+  role       = aws_iam_role.lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole"
+}
+
 data "aws_ecr_authorization_token" "token" {
 }
 
@@ -90,19 +97,7 @@ resource "null_resource" "base_images" {
   }
 }
 
-data "aws_ecr_image" "scraper_image" {
-  repository_name = aws_ecr_repository.rearc_scraper.name
-  image_tag       = "latest"
-}
-
-data "aws_ecr_image" "reports_image" {
-  repository_name = aws_ecr_repository.rearc_reports.name
-  image_tag       = "latest"
-}
-
-
 resource "aws_lambda_function" "lambda_scraper" {
-  # image_uri = "${data.aws_ecr_image.scraper_image.registry_id}:latest"
   image_uri = "${aws_ecr_repository.rearc_scraper.repository_url}:latest"
   function_name                  = "rearc_terraform_scraper"
   role                           = aws_iam_role.lambda.arn
@@ -112,38 +107,68 @@ resource "aws_lambda_function" "lambda_scraper" {
 }
 
 resource "aws_lambda_function" "lambda_reports" {
-  # image_uri = "${data.aws_ecr_image.reports_image.repository_url}:latest"
   image_uri = "${aws_ecr_repository.rearc_reports.repository_url}:latest"
   function_name                  = "rearc_terraform_reports"
   role                           = aws_iam_role.lambda.arn
   depends_on                     = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
   package_type = "Image"
+
 }
 
 
+resource "aws_cloudwatch_event_rule" "daily_cron_lambda_event_rule" {
+  name = "daily_cron_lambda_event_rule"
+  description = "Run Daily"
+  schedule_expression = "cron(0 0 ? * * *)"
+}
+
+resource "aws_cloudwatch_event_target" "profile_generator_lambda_target" {
+  arn =aws_lambda_function.lambda_scraper.arn
+  rule = aws_cloudwatch_event_rule.daily_cron_lambda_event_rule.name
+}
+
+resource "aws_lambda_permission" "allow_cloudwatch_to_call_lambda_scraper" {
+  statement_id = "AllowExecutionFromCloudWatch"
+  action = "lambda:InvokeFunction"
+  principal = "events.amazonaws.com"
+  function_name = aws_lambda_function.lambda_scraper.function_name
+  source_arn = aws_cloudwatch_event_rule.daily_cron_lambda_event_rule.arn
+}
 
 
+resource "aws_sqs_queue" "q" {
+  name = "s3-event-queue"
+  policy = <<POLICY
+{
+  "Version": "2012-10-17",
+  "Id": "sqspolicy",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "sqs:SendMessage",
+      "Resource": "arn:aws:sqs:*:*:s3-event-queue",
+      "Condition": {
+        "ArnEquals": { "aws:SourceArn": "${aws_s3_bucket.main_bucket.arn}" }
+      }
+    }
+  ]
+}
+POLICY
+}
 
 
+resource "aws_s3_bucket_notification" "reports_trigger" {
+  bucket = aws_s3_bucket.main_bucket.bucket
 
+  queue {
+    queue_arn     = aws_sqs_queue.q.arn
+    events        = ["s3:ObjectCreated:*"]
+    filter_suffix       = ".json"
+  }
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-#resource "aws_lambda_function" "terraform_lambda_func" {
-#  filename                       = "${path.module}/create_reports_image.sh"
-#  function_name                  = "rearc_terraform_scraper"
-#  role                           = aws_iam_role.lambda_role.arn
-#  handler                        = "index.lambda_handler"
-#  runtime                        = "python3.8"
-#  depends_on                     = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
-#}
+resource "aws_lambda_event_source_mapping" "event_source_mapping" {
+  event_source_arn = aws_sqs_queue.q.arn
+  function_name    = aws_lambda_function.lambda_reports.arn
+}
